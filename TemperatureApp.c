@@ -5,9 +5,9 @@ int main()
 	FILE *fp0 = NULL;
 	char Buf[4096];
 	
-	/*初始化Buf*/
+	/*鍒濆鍖朆uf*/
 	
-	/*打开设备文件*/
+	/*鎵撳紑璁惧鏂囦欢*/
 	fp0 = fopen("/dev/ds18b20","r+");
 	if (fp0 == NULL)
 	{
