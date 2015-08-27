@@ -50,9 +50,9 @@ module_param(mem_major, int, S_IRUGO);
 struct mem_dev *mem_devp;
 
 
-#define DS18B20_PIN   S3C2451_GPF(0)
-#define DS18B20_PIN_OUTP S3C2451_GPIO_OUTPUT
-#define DS18B20_PIN_INP   S3C2451_GPIO_INPUT
+#define DS18B20_PIN   S3C2410_GPG(11)
+#define DS18B20_PIN_OUTP S3C2410_GPIO_OUTPUT
+#define DS18B20_PIN_INP   S3C2410_GPIO_INPUT
 #define HIGH 1
 #define LOW 0
 
@@ -317,7 +317,7 @@ static void memdev_exit(void)
   
 }
 
-MODULE_AUTHOR("CaZool");
+MODULE_AUTHOR("o2ee");
 MODULE_LICENSE("GPL");
 
 module_init(memdev_init);
