@@ -60,18 +60,18 @@ struct mem_dev *mem_devp;
 unsigned char DS18b20_reset (void)
 {
     // 配置GPIOB0输出模式
-    s3c2451_gpio_cfgpin(DS18B20_PIN, DS18B20_PIN_OUTP);
+    s3c2410_gpio_cfgpin(DS18B20_PIN, DS18B20_PIN_OUTP);
     
     // 向18B20发送一个上升沿，并保持高电平状态约100微秒
-    s3c2451_gpio_setpin(DS18B20_PIN, HIGH);
+    s3c2410_gpio_setpin(DS18B20_PIN, HIGH);
     udelay(100);
     
     // 向18B20发送一个下降沿，并保持低电平状态约600微秒
-    s3c2451_gpio_setpin(DS18B20_PIN, LOW);
+    s3c2410_gpio_setpin(DS18B20_PIN, LOW);
     udelay(600);
     
     // 向18B20发送一个上升沿，此时可释放DS18B20总线
-    s3c2451_gpio_setpin(DS18B20_PIN, HIGH);
+    s3c2410_gpio_setpin(DS18B20_PIN, HIGH);
     udelay(100);
     
     // 以上动作是给DS18B20一个复位脉冲
@@ -79,7 +79,7 @@ unsigned char DS18b20_reset (void)
     s3c2410_gpio_cfgpin(DS18B20_PIN, DS18B20_PIN_INP);
     
     // 若总线在释放后总线状态为高电平，则复位失败
-    if(s3c2451_gpio_getpin(DS18B20_PIN))
+    if(s3c2410_gpio_getpin(DS18B20_PIN))
 	{ printk("DS18b20 reset failed.\r\n"); return 1;}
 
     return 0;
@@ -90,7 +90,7 @@ void DS18b20_write_byte (unsigned char  byte)
 {
     char i;
     // 配置GPIOB1为输出模式
-    s3c2451_gpio_cfgpin(DS18B20_PIN, DS18B20_PIN_OUTP);
+    s3c2410_gpio_cfgpin(DS18B20_PIN, DS18B20_PIN_OUTP);
 
     // 写“1”时隙：
     //     保持总线在低电平1微秒到15微秒之间
@@ -103,28 +103,28 @@ void DS18b20_write_byte (unsigned char  byte)
     //     理想状态: 60微秒的低电平然后跳变再保持1微秒的高电平
     for (i = 0; i < 8; i++)
     {
-        s3c2451_gpio_setpin(DS18B20_PIN, LOW); udelay(1);
+        s3c2410_gpio_setpin(DS18B20_PIN, LOW); udelay(1);
         if(byte & HIGH)
         {
              // 若byte变量的D0位是1，则需向总线上写“1”
              // 根据写“1”时隙规则，电平在此处翻转为高
-             s3c2451_gpio_setpin(DS18B20_PIN, HIGH);
+             s3c2410_gpio_setpin(DS18B20_PIN, HIGH);
         }
         else 
         {
              // 若byte变量的D0位是0，则需向总线上写“0”
              // 根据写“0”时隙规则，电平在保持为低
-             // s3c2451_gpio_setpin(DS18B20_PIN, LOW);
+             // s3c2410_gpio_setpin(DS18B20_PIN, LOW);
         }
         // 电平状态保持60微秒
         udelay(60);
 
-        s3c2451_gpio_setpin(DS18B20_PIN, HIGH);
+        s3c2410_gpio_setpin(DS18B20_PIN, HIGH);
         udelay(15);
 
         byte >>= 1;
     }
-    s3c2451_gpio_setpin(DS18B20_PIN, HIGH);
+    s3c2410_gpio_setpin(DS18B20_PIN, HIGH);
 } 
 
 unsigned char DS18b20_read_byte (void)
@@ -144,20 +144,20 @@ unsigned char DS18b20_read_byte (void)
     //     理想情况: 15微秒的低电平然后跳变再保持46微秒的高电平
     for (i = 0; i < 8; i++)
     {
-        s3c2451_gpio_cfgpin(DS18B20_PIN, DS18B20_PIN_OUTP); 
-        s3c2451_gpio_setpin(DS18B20_PIN, LOW);
+        s3c2410_gpio_cfgpin(DS18B20_PIN, DS18B20_PIN_OUTP);
+        s3c2410_gpio_setpin(DS18B20_PIN, LOW);
 
         udelay(1);
         byte >>= 1;
 
-        s3c2451_gpio_setpin(DS18B20_PIN, HIGH);
-        s3c2451_gpio_cfgpin(DS18B20_PIN, DS18B20_PIN_INP);
+        s3c2410_gpio_setpin(DS18B20_PIN, HIGH);
+        s3c2410_gpio_cfgpin(DS18B20_PIN, DS18B20_PIN_INP);
 
         // 若总线在我们设它为低电平之后若1微秒之内变为高
         // 则认为从DS18B20处收到一个“1”信号
         // 因此把byte的D7为置“1”
 
-        if (s3c2451_gpio_getpin(DS18B20_PIN)) byte |= 0x80;
+        if (s3c2410_gpio_getpin(DS18B20_PIN)) byte |= 0x80;
         udelay(60);
     }
     return byte;       
