@@ -57,29 +57,29 @@ struct mem_dev *mem_devp;
 #define HIGH 1
 #define LOW 0
 
-// DS18B20��λ����
+// DS18B20复位函数
 unsigned char DS18b20_reset (void)
 {
-    // ����GPIOB0���ģʽ
+    // 配置GPIOB0输出模式
     s3c2451_gpio_cfgpin(DS18B20_PIN, DS18B20_PIN_OUTP);
     
-    // ��18B20����һ�������أ������ָߵ�ƽ״̬Լ100΢��
+    // 向18B20发送一个上升沿，并保持高电平状态约100微秒
     s3c2451_gpio_setpin(DS18B20_PIN, HIGH);
     udelay(100);
     
-    // ��18B20����һ���½��أ������ֵ͵�ƽ״̬Լ600΢��
+    // 向18B20发送一个下降沿，并保持低电平状态约600微秒
     s3c2451_gpio_setpin(DS18B20_PIN, LOW);
     udelay(600);
     
-    // ��18B20����һ�������أ���ʱ���ͷ�DS18B20����
+    // 向18B20发送一个上升沿，此时可释放DS18B20总线
     s3c2451_gpio_setpin(DS18B20_PIN, HIGH);
     udelay(100);
     
-    // ���϶����Ǹ�DS18B20һ����λ����
-    // ͨ���ٴ�����GPIOB1���ų�����״̬�����Լ�⵽DS18B20�Ƿ�λ�ɹ�
+    // 以上动作是给DS18B20一个复位脉冲
+    // 通过再次配置GPIOB1引脚成输入状态，可以检测到DS18B20是否复位成功
     s3c2410_gpio_cfgpin(DS18B20_PIN, DS18B20_PIN_INP);
     
-    // ���������ͷź�����״̬Ϊ�ߵ�ƽ����λʧ��
+    // 若总线在释放后总线状态为高电平，则复位失败
     if(s3c2451_gpio_getpin(DS18B20_PIN))
 	{ printk("DS18b20 reset failed.\r\n"); return 1;}
 
@@ -90,34 +90,34 @@ unsigned char DS18b20_reset (void)
 void DS18b20_write_byte (unsigned char  byte)
 {
     char i;
-    // ����GPIOB1Ϊ���ģʽ
+    // 配置GPIOB1为输出模式
     s3c2451_gpio_cfgpin(DS18B20_PIN, DS18B20_PIN_OUTP);
 
-    // д��1��ʱ϶��
-    //     ���������ڵ͵�ƽ1΢�뵽15΢��֮��
-    //     Ȼ���ٱ��������ڸߵ�ƽ15΢�뵽60΢��֮��
-    //     ����״̬: 1΢��ĵ͵�ƽȻ�������ٱ���60΢��ĸߵ�ƽ
+    // 写“1”时隙：
+    //     保持总线在低电平1微秒到15微秒之间
+    //     然后再保持总线在高电平15微秒到60微秒之间
+    //     理想状态: 1微秒的低电平然后跳变再保持60微秒的高电平
     //
-    // д��0��ʱ϶��
-    //     ���������ڵ͵�ƽ15΢�뵽60΢��֮��
-    //     Ȼ���ٱ��������ڸߵ�ƽ1΢�뵽15΢��֮��
-    //     ����״̬: 60΢��ĵ͵�ƽȻ�������ٱ���1΢��ĸߵ�ƽ
+    // 写“0”时隙：
+    //     保持总线在低电平15微秒到60微秒之间
+    //     然后再保持总线在高电平1微秒到15微秒之间
+    //     理想状态: 60微秒的低电平然后跳变再保持1微秒的高电平
     for (i = 0; i < 8; i++)
     {
         s3c2451_gpio_setpin(DS18B20_PIN, LOW); udelay(1);
         if(byte & HIGH)
         {
-             // ��byte������D0λ��1��������������д��1��
-             // ����д��1��ʱ϶���򣬵�ƽ�ڴ˴���תΪ��
+             // 若byte变量的D0位是1，则需向总线上写“1”
+             // 根据写“1”时隙规则，电平在此处翻转为高
              s3c2451_gpio_setpin(DS18B20_PIN, HIGH);
         }
         else 
         {
-             // ��byte������D0λ��0��������������д��0��
-             // ����д��0��ʱ϶���򣬵�ƽ�ڱ���Ϊ��
+             // 若byte变量的D0位是0，则需向总线上写“0”
+             // 根据写“0”时隙规则，电平在保持为低
              // s3c2451_gpio_setpin(DS18B20_PIN, LOW);
         }
-        // ��ƽ״̬����60΢��
+        // 电平状态保持60微秒
         udelay(60);
 
         s3c2451_gpio_setpin(DS18B20_PIN, HIGH);
@@ -132,17 +132,17 @@ unsigned char DS18b20_read_byte (void)
 {
   char i = 0;
    unsigned char byte = 0;
-    // ����1��ʱ϶��
-    //     ������״̬�����ڵ͵�ƽ״̬1΢�뵽15΢��֮��
-    //     Ȼ�����䵽�ߵ�ƽ״̬�ұ�����15΢�뵽60΢��֮��
-    //      ����Ϊ��DS18B20����һ����1���ź�
-    //     �������: 1΢��ĵ͵�ƽȻ�������ٱ���60΢��ĸߵ�ƽ
+    // 读“1”时隙：
+    //     若总线状态保持在低电平状态1微秒到15微秒之间
+    //     然后跳变到高电平状态且保持在15微秒到60微秒之间
+    //      就认为从DS18B20读到一个“1”信号
+    //     理想情况: 1微秒的低电平然后跳变再保持60微秒的高电平
     //
-    // ����0��ʱ϶��
-    //     ������״̬�����ڵ͵�ƽ״̬15΢�뵽30΢��֮��
-    //     Ȼ�����䵽�ߵ�ƽ״̬�ұ�����15΢�뵽60΢��֮��
-    //     ����Ϊ��DS18B20����һ����0���ź�
-    //     �������: 15΢��ĵ͵�ƽȻ�������ٱ���46΢��ĸߵ�ƽ
+    // 读“0”时隙：
+    //     若总线状态保持在低电平状态15微秒到30微秒之间
+    //     然后跳变到高电平状态且保持在15微秒到60微秒之间
+    //     就认为从DS18B20读到一个“0”信号
+    //     理想情况: 15微秒的低电平然后跳变再保持46微秒的高电平
     for (i = 0; i < 8; i++)
     {
         s3c2451_gpio_cfgpin(DS18B20_PIN, DS18B20_PIN_OUTP); 
@@ -154,9 +154,9 @@ unsigned char DS18b20_read_byte (void)
         s3c2451_gpio_setpin(DS18B20_PIN, HIGH);
         s3c2451_gpio_cfgpin(DS18B20_PIN, DS18B20_PIN_INP);
 
-        // ����������������Ϊ�͵�ƽ֮����1΢��֮�ڱ�Ϊ��
-        // ����Ϊ��DS18B20���յ�һ����1���ź�
-        // ��˰�byte��D7Ϊ�á�1��
+        // 若总线在我们设它为低电平之后若1微秒之内变为高
+        // 则认为从DS18B20处收到一个“1”信号
+        // 因此把byte的D7为置“1”
 
         if (s3c2451_gpio_getpin(DS18B20_PIN)) byte |= 0x80;
         udelay(60);
@@ -208,7 +208,7 @@ end :
 
 
 
-/*�ļ��򿪺���*/
+/*文件打开函数*/
 int mem_open(struct inode *inode, struct file *filp)
 {
 
@@ -216,13 +216,13 @@ int mem_open(struct inode *inode, struct file *filp)
 }
 
 
-/*�ļ��ͷź���*/
+/*文件释放函数*/
 int mem_release(struct inode *inode, struct file *filp)
 {
   return 0;
 }
 
-/*������*/
+/*读函数*/
 int x=0;
 static ssize_t mem_read(struct file *filp, char __user *buf, size_t size, loff_t *ppos)
 {
@@ -239,7 +239,7 @@ static ssize_t mem_read(struct file *filp, char __user *buf, size_t size, loff_t
 
 }
 
-/*д����*/
+/*写函数*/
 static ssize_t mem_write(struct file *filp, const char __user *buf, size_t size, loff_t *ppos)
 {
   printk("\nwrite \n");
@@ -248,10 +248,10 @@ static ssize_t mem_write(struct file *filp, const char __user *buf, size_t size,
   return size;
 }
 
-/* seek�ļ���λ���� */
+/* seek文件定位函数 */
 
 
-/*�ļ������ṹ��*/
+/*文件操作结构体*/
 static const struct file_operations mem_fops =
 {
   .owner = THIS_MODULE,
@@ -263,7 +263,7 @@ static const struct file_operations mem_fops =
 struct cdev cdev; 
 
 
-/*�豸����ģ����غ���*/
+/*设备驱动模块加载函数*/
 static int memdev_init(void)
 {
 	struct class *myclass;
@@ -276,17 +276,17 @@ static int memdev_init(void)
     return result;
 	printk("\nmy DS18B20 \n");
 
-  /*��ʼ��cdev�ṹ*/
+  /*初始化cdev结构*/
   cdev_init(&cdev, &mem_fops);
   cdev.owner = THIS_MODULE;
   cdev.ops = &mem_fops;
   
-  /* ע���ַ��豸 */
+  /* 注册字符设备 */
   cdev_add(&cdev, devno, 1);
    
-  /* Ϊ�豸�����ṹ�����ڴ�*/
+  /* 为设备描述结构分配内存*/
   mem_devp = kmalloc( sizeof(struct mem_dev), GFP_KERNEL);
-  if (!mem_devp)    /*����ʧ��*/
+  if (!mem_devp)    /*申请失败*/
   {
     result =  - ENOMEM;
     goto fail_malloc;
@@ -296,8 +296,8 @@ static int memdev_init(void)
   
  
  
-  /*�Զ������豸�ļ�*/
-	myclass = class_create(THIS_MODULE,"test_char"); /*��sys�´�����Ŀ¼/sys/class/test_char*/
+  /*自动创建设备文件*/
+	myclass = class_create(THIS_MODULE,"test_char"); /*在sys下创建类目录/sys/class/test_char*/
 	device_create(myclass, NULL, MKDEV(mem_major,0), NULL, "ds18b20");   
 	printk("\nDS18B20 inited\n");
   return 0;
@@ -308,12 +308,12 @@ static int memdev_init(void)
   return result;
 }
 
-/*ģ��ж�غ���*/
+/*模块卸载函数*/
 static void memdev_exit(void)
 {
-  cdev_del(&cdev);   /*ע���豸*/
-  kfree(mem_devp);     /*�ͷ��豸�ṹ���ڴ�*/
-  unregister_chrdev_region(MKDEV(mem_major, 0), 2); /*�ͷ��豸��*/
+  cdev_del(&cdev);   /*注销设备*/
+  kfree(mem_devp);     /*释放设备结构体内存*/
+  unregister_chrdev_region(MKDEV(mem_major, 0), 2); /*释放设备号*/
   printk("\n DS18B20 EXIT\n");
   
 }
@@ -323,3 +323,4 @@ MODULE_LICENSE("GPL");
 
 module_init(memdev_init);
 module_exit(memdev_exit);
+
